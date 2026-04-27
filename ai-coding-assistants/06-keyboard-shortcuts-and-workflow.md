@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Code, Cursor, VS Code + Copilot  
 **Difficulty:** Beginner → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [Project Context Files](./01-project-context-files.md) · [Token Optimization](./04-token-optimization-and-context.md) · [Hooks & Security](./05-hooks-security-automation.md)
 
 ---
 

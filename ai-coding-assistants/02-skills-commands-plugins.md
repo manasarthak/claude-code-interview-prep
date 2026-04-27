@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Code (primary), Cursor (custom commands), Copilot (extensions)  
 **Difficulty:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [Project Context Files](./01-project-context-files.md) · [MCP Servers](./03-mcp-servers.md) · [Token Optimization](./04-token-optimization-and-context.md) · [Hooks & Security](./05-hooks-security-automation.md) · [Agent SDK](./07-agent-sdk-and-programmatic-use.md)
 
 ---
 

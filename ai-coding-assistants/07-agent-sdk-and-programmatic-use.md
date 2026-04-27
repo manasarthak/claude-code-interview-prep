@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Agent SDK, OpenAI Agents SDK, LangChain, custom agents  
 **Difficulty:** Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [LLM Fundamentals](../ai/llms/01-llm-fundamentals.md) · [Prompting — ReAct](../ai/prompting/01-prompting-fundamentals.md) · [RAG — Agentic RAG](../ai/rag/01-rag-fundamentals.md) · [MCP Servers](./03-mcp-servers.md) · [Hooks & Security](./05-hooks-security-automation.md) · [Token Optimization](./04-token-optimization-and-context.md)
 
 ---
 

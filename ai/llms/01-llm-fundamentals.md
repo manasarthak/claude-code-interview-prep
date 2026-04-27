@@ -2,7 +2,8 @@
 
 **Phase:** 1 (Foundations)  
 **Difficulty progression:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [RAG Fundamentals](../rag/01-rag-fundamentals.md) · [Prompting Fundamentals](../prompting/01-prompting-fundamentals.md) · [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) · [Agent SDK](../../ai-coding-assistants/07-agent-sdk-and-programmatic-use.md)
 
 ---
 
@@ -26,12 +27,13 @@ LLMs don't see words — they see **tokens**. Tokenization breaks text into subw
 - "unhappiness" → ["un", "happiness"] or ["un", "hap", "pi", "ness"]
 - The average English word ≈ 1.3 tokens
 - Code, non-English languages, and rare words use more tokens
-- Why this matters: context window limits, API pricing, and generation speed are all measured in tokens
+- Why this matters: context window limits, API pricing, and generation speed are all measured in tokens. See [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) for practical implications when building agents.
+- Tokenizer reference: [OpenAI Tokenizer](https://platform.openai.com/tokenizer) · [Anthropic Tokenizer](https://docs.claude.com/en/docs/about-claude/glossary#tokens)
 
 ### Key Parameters
 
 - **Parameters** — The learned weights in the neural network. GPT-4 is rumored at ~1.8T, Llama 3 comes in 8B/70B/405B variants.
-- **Context window** — Max tokens the model can see at once (input + output). Claude: 200K, GPT-4: 128K, Gemini: up to 1M+.
+- **Context window** — Max tokens the model can see at once (input + output). Claude: 200K, GPT-4: 128K, Gemini: up to 1M+. The size of the context window is what makes [RAG](../rag/01-rag-fundamentals.md) essential — even 1M tokens isn't enough to fit a corporate knowledge base, and longer context costs more and degrades quality.
 - **Temperature** — Controls randomness. 0 = deterministic (always pick most likely token), 1 = creative, >1 = chaotic.
 - **Top-p (nucleus sampling)** — Only consider tokens whose cumulative probability reaches p. Top-p 0.9 means ignore the bottom 10% of unlikely tokens.
 
@@ -203,7 +205,7 @@ Key implications:
 
 ### Reasoning Models — A New Paradigm
 
-Models like OpenAI's o1/o3 and DeepSeek-R1 represent a shift: instead of answering immediately, they "think" with chain-of-thought internally, using more compute at inference time for harder problems.
+Models like OpenAI's o1/o3 and DeepSeek-R1 represent a shift: instead of answering immediately, they "think" with chain-of-thought internally, using more compute at inference time for harder problems. See [Prompting Fundamentals — CoT](../prompting/01-prompting-fundamentals.md) for how this maps to user-side prompting techniques.
 
 This introduces a new scaling axis: **inference-time compute**. Instead of only scaling training, you can throw more compute at each individual query. This matters for math, coding, and complex reasoning.
 
@@ -240,4 +242,24 @@ This introduces a new scaling axis: **inference-time compute**. Instead of only 
 *Next: Add notes on specific models as you study them, papers you read, and experiments you run.*
 
 ## Resources & Links
-_(Add as you go)_
+
+### Foundational Papers
+- [*Attention Is All You Need*](https://arxiv.org/abs/1706.03762) — the original transformer paper (Vaswani et al., 2017).
+- [*Language Models are Few-Shot Learners*](https://arxiv.org/abs/2005.14165) — GPT-3 paper.
+- [*Training Compute-Optimal Large Language Models*](https://arxiv.org/abs/2203.15556) — the Chinchilla scaling laws paper.
+- [*FlashAttention*](https://arxiv.org/abs/2205.14135) — fused, memory-efficient attention.
+- [*RoFormer: Enhanced Transformer with Rotary Position Embedding*](https://arxiv.org/abs/2104.09864) — RoPE.
+- [*GQA: Training Generalized Multi-Query Transformer Models*](https://arxiv.org/abs/2305.13245) — GQA paper.
+
+### Hands-On References
+- [The Illustrated Transformer (Jay Alammar)](https://jalammar.github.io/illustrated-transformer/) — the canonical visual explainer.
+- [Andrej Karpathy — Let's build GPT](https://www.youtube.com/watch?v=kCc8FmEb1nY) — implement a transformer from scratch.
+- [Hugging Face transformers docs](https://huggingface.co/docs/transformers/index)
+- [vLLM project](https://github.com/vllm-project/vllm) — production serving.
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) — CPU/GPU inference for quantized models.
+
+### Companion Files in This Repo
+- [RAG Fundamentals](../rag/01-rag-fundamentals.md) — how to extend an LLM's knowledge beyond its weights.
+- [Prompting Fundamentals](../prompting/01-prompting-fundamentals.md) — how to talk to it.
+- [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) — practical token-budget management when building agents.
+- [Agent SDK](../../ai-coding-assistants/07-agent-sdk-and-programmatic-use.md) — programmatic use.

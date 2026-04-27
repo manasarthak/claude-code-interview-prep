@@ -2,7 +2,8 @@
 
 **Phase:** 1 (Foundations)  
 **Difficulty progression:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [LLM Fundamentals](../llms/01-llm-fundamentals.md) · [Prompting Fundamentals](../prompting/01-prompting-fundamentals.md) · [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) · [DE: Data Quality](../../data-engineer/11-data-quality-contracts.md) · [DE: Partitioning & Performance](../../data-engineer/13-partitioning-performance.md)
 
 ---
 
@@ -38,12 +39,13 @@ User Question
 
 ### Key Vocabulary
 
-- **Embedding** — A numerical vector (list of numbers) that represents the meaning of a piece of text. Similar meanings produce similar vectors.
-- **Vector database** — A specialized database optimized for storing and searching embeddings by similarity (not exact match).
+- **Embedding** — A numerical vector (list of numbers) that represents the meaning of a piece of text. Similar meanings produce similar vectors. Embeddings are produced by a transformer encoder; if you want to understand how they're learned, see [LLM Fundamentals](../llms/01-llm-fundamentals.md).
+- **Vector database** — A specialized database optimized for storing and searching embeddings by similarity (not exact match). The pipelines that *load* a vector DB are real DE problems — see [DE: ETL vs ELT](../../data-engineer/04-etl-vs-elt.md).
 - **Chunk** — A piece of a larger document, broken up so it fits in the LLM's context window and is granular enough for precise retrieval.
 - **Top-K retrieval** — Returning the K most similar results from the vector database.
-- **Context window** — The maximum amount of text an LLM can process in one call (e.g., 128K tokens for GPT-4, 200K for Claude).
-- **Hallucination** — When the model generates plausible-sounding but incorrect information.
+- **Context window** — The maximum amount of text an LLM can process in one call (e.g., 128K tokens for GPT-4, 200K for Claude). See [LLM Fundamentals — Key Parameters](../llms/01-llm-fundamentals.md) for why even 1M tokens isn't enough.
+- **Tokenization** — Converting text into the integer IDs the model actually consumes. Chunk size is measured in tokens, not characters. See [LLM Fundamentals — Tokens, Not Words](../llms/01-llm-fundamentals.md).
+- **Hallucination** — When the model generates plausible-sounding but incorrect information. RAG mitigates this by grounding the answer in retrieved context.
 
 ### When to Use RAG
 
@@ -149,7 +151,7 @@ Top 5-10 → LLM prompt
 
 ### Step 5: Prompt Construction
 
-Once you have relevant chunks, you build the prompt:
+Once you have relevant chunks, you build the prompt. The structure of this prompt — system instructions, context format, citation requirements — is itself a [prompting](../prompting/01-prompting-fundamentals.md) problem:
 
 ```
 System: You are a helpful assistant. Answer the user's question using 
@@ -295,4 +297,26 @@ If users ask semantically similar questions, cache the response and skip the LLM
 *Next: Add hands-on notes as you build. Link to papers and blog posts you find valuable below.*
 
 ## Resources & Links
-_(Add as you go)_
+
+### Foundational Papers
+- [*Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks*](https://arxiv.org/abs/2005.11401) — original RAG paper (Lewis et al., 2020).
+- [*Dense Passage Retrieval for Open-Domain QA*](https://arxiv.org/abs/2004.04906) — DPR.
+- [*Precise Zero-Shot Dense Retrieval without Relevance Labels*](https://arxiv.org/abs/2212.10496) — HyDE.
+- [*ColBERT: Efficient and Effective Passage Search*](https://arxiv.org/abs/2004.12832) — late-interaction reranking.
+- [*Lost in the Middle: How Language Models Use Long Contexts*](https://arxiv.org/abs/2307.03172) — why ordering of retrieved chunks matters.
+
+### Production References
+- [LangChain RAG documentation](https://python.langchain.com/docs/tutorials/rag/)
+- [LlamaIndex RAG framework](https://docs.llamaindex.ai/)
+- [RAGAS — RAG evaluation framework](https://docs.ragas.io/)
+- [Anthropic — Contextual Retrieval](https://www.anthropic.com/news/contextual-retrieval) — chunk-prefix technique that boosts retrieval accuracy.
+- [Pinecone — Vector DB learning center](https://www.pinecone.io/learn/)
+- [Cohere Rerank docs](https://docs.cohere.com/docs/rerank-overview)
+- [pgvector](https://github.com/pgvector/pgvector) — Postgres extension if you don't want a dedicated vector DB.
+
+### Companion Files in This Repo
+- [LLM Fundamentals](../llms/01-llm-fundamentals.md) — what's *inside* the model that's consuming the retrieved context.
+- [Prompting Fundamentals](../prompting/01-prompting-fundamentals.md) — how to instruct the model to use the context faithfully.
+- [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) — controlling cost and latency.
+- [DE: Partitioning & Performance](../../data-engineer/13-partitioning-performance.md) — the DE side of vector index storage and serving.
+- [DE: Data Quality & Contracts](../../data-engineer/11-data-quality-contracts.md) — pipelines that feed RAG indexes need the same data-quality rigor.

@@ -2,7 +2,8 @@
 
 **Applies to:** All AI coding assistants (Claude Code, Cursor, ChatGPT, Copilot)  
 **Difficulty:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [LLM Fundamentals — Tokens](../ai/llms/01-llm-fundamentals.md) · [RAG Fundamentals](../ai/rag/01-rag-fundamentals.md) · [Project Context Files](./01-project-context-files.md) · [MCP Servers](./03-mcp-servers.md)
 
 ---
 
@@ -10,7 +11,7 @@
 
 ### What Is the Context Window?
 
-The context window is the total amount of text the AI can "see" at once — your instructions, conversation history, file contents, tool outputs, everything. It's measured in tokens (roughly 1 token ≈ 0.75 words).
+The context window is the total amount of text the AI can "see" at once — your instructions, conversation history, file contents, tool outputs, everything. It's measured in tokens (roughly 1 token ≈ 0.75 words). For the underlying mechanics of tokenization, see [LLM Fundamentals — Tokens, Not Words](../ai/llms/01-llm-fundamentals.md).
 
 Current context sizes (2026): Claude Opus/Sonnet: 1M tokens, GPT-4: 128K, Gemini: 1M+.
 

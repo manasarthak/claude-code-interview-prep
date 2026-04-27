@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Code (native), Cursor (via extensions), VS Code (via extensions)  
 **Difficulty:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [Project Context Files](./01-project-context-files.md) · [Skills, Commands, Plugins](./02-skills-commands-plugins.md) · [Token Optimization](./04-token-optimization-and-context.md) · [Hooks & Security](./05-hooks-security-automation.md) · [Agent SDK](./07-agent-sdk-and-programmatic-use.md) · [Prompting — ReAct](../ai/prompting/01-prompting-fundamentals.md)
 
 ---
 

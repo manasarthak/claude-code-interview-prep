@@ -2,7 +2,8 @@
 
 **Phase:** 1 (Foundations)  
 **Difficulty progression:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [LLM Fundamentals](../llms/01-llm-fundamentals.md) · [RAG Fundamentals](../rag/01-rag-fundamentals.md) · [Project Context Files](../../ai-coding-assistants/01-project-context-files.md) · [Token Optimization](../../ai-coding-assistants/04-token-optimization-and-context.md) · [Hooks & Security](../../ai-coding-assistants/05-hooks-security-automation.md)
 
 ---
 
@@ -66,7 +67,7 @@ Few-shot almost always outperforms zero-shot for structured tasks. The model inf
 
 ### Chain-of-Thought (CoT)
 
-Instead of asking the model to jump to an answer, ask it to think step by step.
+Instead of asking the model to jump to an answer, ask it to think step by step. CoT is also the principle behind modern reasoning models — see [LLM Fundamentals — Reasoning Models](../llms/01-llm-fundamentals.md).
 
 **Without CoT:**
 ```
@@ -99,7 +100,7 @@ Typically 5–10 samples. More expensive but significantly more reliable for imp
 
 ### ReAct (Reason + Act)
 
-Combines reasoning with tool use in an interleaved pattern:
+Combines reasoning with tool use in an interleaved pattern. ReAct is the conceptual pattern behind both [agentic RAG](../rag/01-rag-fundamentals.md) and modern coding agents — see [Agent SDK](../../ai-coding-assistants/07-agent-sdk-and-programmatic-use.md):
 
 ```
 Thought: I need to find the current stock price of AAPL.
@@ -192,7 +193,7 @@ Production system prompts are often 500–2000+ tokens and include:
 
 ### Prompt Injection & Defense
 
-**Prompt injection** is when adversarial user input overrides the system prompt:
+**Prompt injection** is when adversarial user input overrides the system prompt. For agent-specific defenses (sandboxing, hooks, allowlisted tools), see [Hooks & Security](../../ai-coding-assistants/05-hooks-security-automation.md):
 
 ```
 System: You are a helpful customer service bot. Only answer questions 
@@ -265,7 +266,7 @@ test_cases = [
 | Top-p 0.9 + Temp 0.7 | Good default for most creative tasks |
 | Top-p 1.0 + Temp 0 | Maximum determinism |
 
-**For production RAG:** Almost always temperature 0 or very low. You want consistency and faithfulness, not creativity.
+**For production [RAG](../rag/01-rag-fundamentals.md):** Almost always temperature 0 or very low. You want consistency and faithfulness, not creativity.
 
 ---
 
@@ -299,4 +300,26 @@ Prompting adapts behavior at inference time (flexible, no training needed, limit
 *Next: Add examples of prompts you've written, experiments with different techniques, and notes on model-specific behaviors.*
 
 ## Resources & Links
-_(Add as you go)_
+
+### Foundational Papers
+- [*Chain-of-Thought Prompting Elicits Reasoning*](https://arxiv.org/abs/2201.11903) — Wei et al., 2022.
+- [*Self-Consistency Improves Chain-of-Thought Reasoning*](https://arxiv.org/abs/2203.11171) — Wang et al., 2022.
+- [*ReAct: Synergizing Reasoning and Acting in Language Models*](https://arxiv.org/abs/2210.03629) — Yao et al., 2022.
+- [*Tree of Thoughts*](https://arxiv.org/abs/2305.10601) — branching reasoning beyond linear CoT.
+- [*Take a Step Back: Evoking Reasoning via Abstraction*](https://arxiv.org/abs/2310.06117) — step-back prompting.
+
+### Official Guides & Hands-On
+- [Anthropic Prompt Engineering Guide](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview) — current and authoritative.
+- [Anthropic Prompt Library](https://docs.claude.com/en/prompt-library/library) — production-grade examples.
+- [OpenAI Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering)
+- [Google's Prompting Guide for Gemini](https://ai.google.dev/gemini-api/docs/prompting-strategies)
+- [Prompting Guide (Elvis Saravia)](https://www.promptingguide.ai/) — broad reference site.
+- [DSPy](https://github.com/stanfordnlp/dspy) — programmatic prompt optimization.
+- [Outlines](https://github.com/outlines-dev/outlines) — constrained / structured generation.
+- [PromptFoo](https://www.promptfoo.dev/) — prompt testing & eval framework.
+
+### Companion Files in This Repo
+- [LLM Fundamentals](../llms/01-llm-fundamentals.md) — what's actually receiving these prompts.
+- [RAG Fundamentals](../rag/01-rag-fundamentals.md) — prompts in a RAG context.
+- [Project Context Files](../../ai-coding-assistants/01-project-context-files.md) — coding-agent flavor of system prompts.
+- [Hooks & Security](../../ai-coding-assistants/05-hooks-security-automation.md) — programmatic defenses against injection.

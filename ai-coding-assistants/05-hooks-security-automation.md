@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Code (hooks are native), general security applies to all tools  
 **Difficulty:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [MCP Servers](./03-mcp-servers.md) · [Skills, Commands, Plugins](./02-skills-commands-plugins.md) · [Agent SDK](./07-agent-sdk-and-programmatic-use.md) · [Prompting — Injection Defense](../ai/prompting/01-prompting-fundamentals.md)
 
 ---
 

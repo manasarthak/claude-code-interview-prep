@@ -2,7 +2,8 @@
 
 **Applies to:** Claude Code, Cursor, Windsurf, GitHub Copilot, Codex CLI, Gemini CLI  
 **Difficulty:** Beginner → Intermediate → Advanced  
-**Last updated:** April 12, 2026
+**Last updated:** April 24, 2026
+**Related:** [Skills, Commands, Plugins](./02-skills-commands-plugins.md) · [MCP Servers](./03-mcp-servers.md) · [Token Optimization](./04-token-optimization-and-context.md) · [Prompting Fundamentals](../ai/prompting/01-prompting-fundamentals.md)
 
 ---
 
