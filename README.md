@@ -12,6 +12,7 @@ This is a working notebook for two intersecting career tracks: **AI Engineering*
 
 | Folder | Purpose | Where to start |
 |---|---|---|
+| [`python/`](./python/) | Python-flavored DSA, algorithms, CPython internals, modern structures | [Python Hub](./python/README.md) |
 | [`ai/`](./ai/) | LLMs, RAG, prompting fundamentals | [LLM Fundamentals](./ai/llms/01-llm-fundamentals.md) |
 | [`ai-coding-assistants/`](./ai-coding-assistants/) | Claude Code, Cursor, MCP, Agent SDK | [Project Context Files](./ai-coding-assistants/01-project-context-files.md) |
 | [`data-engineer/`](./data-engineer/) | DE fundamentals → senior interview topics | [DE Hub](./data-engineer/README.md) |
@@ -36,13 +37,14 @@ Cross-references between files use plain markdown links so you can navigate conc
 ## The Recommended Reading Path
 
 **If you have 1 month before interviews:**
-1. [DE: SQL Deep Dive](./data-engineer/01-sql-deep-dive.md) (most-tested topic)
-2. [DE: Data Modeling](./data-engineer/02-data-modeling.md)
-3. [DE: ETL vs ELT](./data-engineer/04-etl-vs-elt.md)
-4. [DE: Spark Fundamentals](./data-engineer/07-spark-fundamentals.md)
-5. [DE: System Design](./data-engineer/15-system-design-de.md)
-6. [AI: LLM Fundamentals](./ai/llms/01-llm-fundamentals.md)
-7. [AI: RAG Fundamentals](./ai/rag/01-rag-fundamentals.md)
+1. [Python: Complexity Analysis](./python/01-complexity-analysis.md) + [Python Internals](./python/02-python-internals.md) (foundation)
+2. [DE: SQL Deep Dive](./data-engineer/01-sql-deep-dive.md) (most-tested topic)
+3. [DE: Data Modeling](./data-engineer/02-data-modeling.md)
+4. [DE: ETL vs ELT](./data-engineer/04-etl-vs-elt.md)
+5. [DE: Spark Fundamentals](./data-engineer/07-spark-fundamentals.md)
+6. [DE: System Design](./data-engineer/15-system-design-de.md)
+7. [AI: LLM Fundamentals](./ai/llms/01-llm-fundamentals.md)
+8. [AI: RAG Fundamentals](./ai/rag/01-rag-fundamentals.md)
 
 **If you have 3 months:** the full DE topic index (1–15) + the AI fundamentals + one [Tier-S project](./projects/README.md#tier-s--highest-leverage-do-at-least-one-of-these).
 
