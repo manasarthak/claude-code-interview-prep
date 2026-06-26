@@ -48,6 +48,7 @@ Read in this order. Each file follows the Beginner → Intermediate → Advanced
 13. [Partitioning & Performance](./13-partitioning-performance.md) — file sizes, bucketing, Z-ordering, compaction
 14. [Governance, Lineage, Observability](./14-governance-lineage-observability.md) — OpenLineage, DataHub, Monte Carlo
 15. [System Design for DE](./15-system-design-de.md) — interview frameworks + worked examples
+16. [Pandas Data Manipulation](./16-pandas-data-manipulation.md) — DE-flavored pandas + SQL→pandas bridge + pandas↔PySpark (tuned for HackerRank OAs)
 
 ---
 
