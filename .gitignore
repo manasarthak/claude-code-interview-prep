@@ -1,0 +1,42 @@
+# Private notes / drafts — never commit these
+PRIVATE/
+private/
+NOTES/
+notes/
+drafts/
+*.private.md
+*.private/
+*.local.md
+scratch/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+
+# Node
+node_modules/
+
+# Data / secrets
+*.csv
+*.parquet
+*.pkl
+*.sqlite
+*.db
+secrets.*
+.env.local
+credentials/

@@ -13,6 +13,7 @@ This is a working notebook for two intersecting career tracks: **AI Engineering*
 | Folder | Purpose | Where to start |
 |---|---|---|
 | [`python/`](./python/) | Python-flavored DSA, algorithms, CPython internals, modern structures | [Python Hub](./python/README.md) |
+| [`statistics/`](./statistics/) | Probability, hypothesis testing, t/z/χ², A/B testing, ML metrics, Bayesian/causal | [Statistics Hub](./statistics/README.md) |
 | [`ai/`](./ai/) | LLMs, RAG, prompting fundamentals | [LLM Fundamentals](./ai/llms/01-llm-fundamentals.md) |
 | [`ai-coding-assistants/`](./ai-coding-assistants/) | Claude Code, Cursor, MCP, Agent SDK | [Project Context Files](./ai-coding-assistants/01-project-context-files.md) |
 | [`data-engineer/`](./data-engineer/) | DE fundamentals → senior interview topics | [DE Hub](./data-engineer/README.md) |
@@ -45,6 +46,7 @@ Cross-references between files use plain markdown links so you can navigate conc
 6. [DE: System Design](./data-engineer/15-system-design-de.md)
 7. [AI: LLM Fundamentals](./ai/llms/01-llm-fundamentals.md)
 8. [AI: RAG Fundamentals](./ai/rag/01-rag-fundamentals.md)
+9. (DS roles) [Stats: Hypothesis Testing](./statistics/03-hypothesis-testing.md) + [ML Metrics](./statistics/06-ml-metrics.md) + [A/B Testing](./statistics/04-ab-testing.md)
 
 **If you have 3 months:** the full DE topic index (1–15) + the AI fundamentals + one [Tier-S project](./projects/README.md#tier-s--highest-leverage-do-at-least-one-of-these).
 

@@ -15,6 +15,23 @@ If your SQL is weak, no other skill saves you in the interview.
 
 ---
 
+## ⚠️ Online Assessment Engine Warning — Read This Before Drilling
+
+Most timed online SQL assessments run **MySQL, MS SQL Server, Oracle, or DB2** — not Snowflake / BigQuery / Redshift. Many "killer features" of warehouse SQL **do not exist** on these engines:
+
+| Feature | Snowflake / BigQuery / Spark | MySQL / MS SQL / Oracle / DB2 |
+|---|---|---|
+| `QUALIFY` | ✅ | ❌ — use CTE + `ROW_NUMBER()` + `WHERE rn = 1` |
+| `DATE_TRUNC('month', x)` | ✅ | ❌ — use `DATE_FORMAT()`, `MONTH()`, `TRUNC()`, dialect-specific |
+| `DATEDIFF(day, a, b)` | ✅ (3-arg) | MySQL is 2-arg `DATEDIFF(a, b)`; Oracle subtracts dates directly |
+| `LISTAGG` / `STRING_AGG` / `GROUP_CONCAT` | All differ | MySQL: `GROUP_CONCAT`; MS SQL: `STRING_AGG`; Oracle: `LISTAGG` |
+| Boolean type | ✅ | MySQL: TINYINT; SQL Server: BIT; Oracle: no native boolean |
+| `LIMIT n` | ✅ | MySQL/Postgres: `LIMIT`; MS SQL: `TOP n` / `OFFSET..FETCH`; Oracle 12+: `FETCH FIRST n ROWS ONLY` |
+
+**Rule of thumb for timed rounds:** before you write a single character, identify the engine (it's shown on the question), and bias toward the *portable* pattern (CTE + window function + standard `CASE`) over any dialect-specific sugar. Full dialect cheat sheet in the [Dialect Reference](#dialect-reference) section below.
+
+---
+
 ## BEGINNER — The Core Mechanics
 
 ### The Six Logical Clauses (and Their Real Execution Order)
@@ -78,6 +95,220 @@ But the database evaluates it in a different order — knowing this prevents 80%
 - Every non-aggregated column in SELECT must appear in GROUP BY (in standard SQL).
 - Some engines (MySQL with `ONLY_FULL_GROUP_BY` off, BigQuery with ANY_VALUE) relax this. Don't rely on it.
 - `GROUP BY 1, 2` references SELECT columns by ordinal — fine for ad-hoc, error-prone in production code.
+
+### NULL Handling Functions (constant in interviews)
+
+NULL behavior was covered above — these are the **functions** you use to handle it. They appear on nearly every timed SQL question.
+
+| Function | What it does | Available in |
+|---|---|---|
+| `COALESCE(a, b, c, ...)` | Returns the first non-NULL argument | Everywhere — standard SQL |
+| `NULLIF(a, b)` | Returns NULL if a = b; else a. Most-used as a **divide-by-zero guard** | Everywhere — standard SQL |
+| `IFNULL(a, b)` | MySQL-specific 2-arg version of COALESCE | MySQL, SQLite |
+| `ISNULL(a, b)` | MS SQL Server's 2-arg replace-NULL | MS SQL only — **does not work** in MySQL/Postgres |
+| `NVL(a, b)` | Oracle's 2-arg COALESCE | Oracle |
+| `NVL2(a, if_not_null, if_null)` | Oracle 3-way variant | Oracle |
+| `IS NULL` / `IS NOT NULL` | Predicate (not a function) — the only correct NULL comparison | Everywhere |
+
+```sql
+-- Replace NULLs in output (e.g., "show 0 instead of NULL for users with no orders")
+SELECT u.user_id,
+       COALESCE(SUM(o.amount), 0) AS total_spent
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.user_id
+GROUP BY u.user_id;
+
+-- NULLIF as divide-by-zero guard (returns NULL instead of erroring,
+-- then COALESCE the NULL out)
+SELECT product_id,
+       COALESCE(SUM(revenue) / NULLIF(SUM(units), 0), 0) AS revenue_per_unit
+FROM sales
+GROUP BY product_id;
+
+-- NULLIF to "blank out" sentinel values for downstream COALESCE
+SELECT COALESCE(NULLIF(phone, ''), 'unknown') AS phone
+FROM users;
+```
+
+**Portable rule:** prefer `COALESCE` over `IFNULL`/`ISNULL`/`NVL` — it's the only one that works in every engine.
+
+### The Integer-Division & Numeric-Cast Trap (the #1 hidden-test killer)
+
+The single most common "passes examples, fails hidden tests" bug in timed SQL rounds. Postgres, SQL Server, Oracle, Spark SQL all use **integer division** when both operands are integers:
+
+```sql
+-- WRONG: returns 0 for any ratio < 1, then ROUND can't save you
+SELECT ROUND(shipped / total * 100, 2) FROM order_stats;
+-- shipped=3, total=10 → 3/10 = 0 (integer!) → 0 * 100 = 0 → ROUND(0,2) = 0.00
+```
+
+Five idiomatic fixes — pick one and use it every time:
+
+```sql
+-- 1. Multiply by 1.0 (or 100.0) to promote to floating point — most portable
+SELECT ROUND(100.0 * shipped / NULLIF(total, 0), 2) AS pct_shipped FROM order_stats;
+
+-- 2. CAST one operand to DECIMAL/NUMERIC explicitly (preferred for exact decimals)
+SELECT ROUND(CAST(shipped AS DECIMAL(10,4)) / NULLIF(total, 0) * 100, 2) FROM order_stats;
+
+-- 3. CAST AS FLOAT / DOUBLE (when you don't care about decimal precision)
+SELECT CAST(shipped AS FLOAT) / NULLIF(total, 0) FROM order_stats;
+
+-- 4. MySQL-specific: division of integers already promotes to DECIMAL —
+--    BUT this is engine-specific and unreliable to rely on.
+
+-- 5. Postgres-specific shorthand: ::numeric
+SELECT ROUND(shipped::numeric / NULLIF(total, 0) * 100, 2) FROM order_stats;
+```
+
+**Always pair the cast with `NULLIF(denominator, 0)`** to avoid the divide-by-zero error on edge rows.
+
+`ROUND(x, n)` quirks to know:
+- `ROUND(2.5, 0)` → some engines round half-up (3), some banker's-round (2). MySQL rounds half-away-from-zero (3); Postgres uses banker's rounding (2) for numeric, half-up for float. **Always verify on your target engine** if the question grades exact decimals.
+- `ROUND` returns NULL if input is NULL — chain with `COALESCE` if your spec says "0 for NULL."
+
+### String Functions — Constant in Timed Rounds, Often Underdrilled
+
+You'll need at least one string function on roughly half of timed SQL questions. The standard set:
+
+| Function | What it does | Notes |
+|---|---|---|
+| `LENGTH(s)` / `CHAR_LENGTH(s)` | Character count | MySQL: `LENGTH` returns *bytes* (multibyte!); use `CHAR_LENGTH` for char count |
+| `SUBSTRING(s FROM start FOR len)` / `SUBSTR(s, start, len)` | Substring (1-indexed!) | Both forms; standard syntax uses FROM/FOR |
+| `LEFT(s, n)` / `RIGHT(s, n)` | First/last n chars | MySQL/MS SQL/Postgres; not Oracle (use SUBSTR) |
+| `TRIM(s)` / `LTRIM` / `RTRIM` | Strip whitespace (or chars: `TRIM(BOTH 'x' FROM s)`) | Standard |
+| `UPPER(s)` / `LOWER(s)` | Case conversion | Standard |
+| `REPLACE(s, from, to)` | Replace all occurrences | Standard |
+| `CONCAT(a, b, c)` or `a \|\| b` | Concatenation | MySQL accepts `\|\|` only with `PIPES_AS_CONCAT`; Oracle/Postgres always use `\|\|`; MS SQL uses `+` |
+| `POSITION(sub IN s)` / `STRPOS(s, sub)` / `INSTR(s, sub)` / `CHARINDEX(sub, s)` | Find position; 0 if absent | Naming differs by engine |
+| `SPLIT_PART(s, delim, n)` | nth token after split (Postgres) | MySQL: `SUBSTRING_INDEX(s, delim, n)` |
+| `REGEXP_REPLACE(s, pattern, repl)` | Regex substitution | Available in Postgres/MySQL 8/Oracle/MS SQL 2017+ |
+| `LIKE 'foo%'` / `ILIKE 'foo%'` | Pattern match; `%` = any chars, `_` = one char; ILIKE = case-insensitive (Postgres only) | MySQL `LIKE` is case-insensitive by default for non-binary strings |
+| `LPAD(s, n, c)` / `RPAD(s, n, c)` | Pad to length n with char c | Standard |
+| `REVERSE(s)` | Reverse the string | MySQL / MS SQL / Postgres |
+| `FORMAT(num, n)` / `TO_CHAR(num, fmt)` | Format number as string | MySQL: `FORMAT`; Oracle/Postgres: `TO_CHAR`; MS SQL: `FORMAT` |
+
+```sql
+-- "Find emails whose domain is gmail.com" — classic pattern
+SELECT email
+FROM users
+WHERE LOWER(SUBSTRING(email FROM POSITION('@' IN email) + 1)) = 'gmail.com';
+
+-- "Capitalize first letter of each name" — common ETL question
+SELECT CONCAT(UPPER(LEFT(name, 1)), LOWER(SUBSTRING(name, 2))) AS proper_name
+FROM users;
+
+-- "Strip non-digits from phone" — Postgres/MySQL 8 regex
+SELECT REGEXP_REPLACE(phone, '[^0-9]', '', 'g') AS phone_digits FROM users;
+
+-- "Extract domain from URL" — SPLIT_PART idiom
+SELECT SPLIT_PART(SPLIT_PART(url, '://', 2), '/', 1) AS domain FROM page_views;
+
+-- MySQL equivalent using SUBSTRING_INDEX
+SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(url, '://', -1), '/', 1) AS domain FROM page_views;
+```
+
+**Common string traps:**
+- **1-indexed, not 0-indexed.** `SUBSTRING('hello', 1, 3)` → `'hel'`, not `'ell'`.
+- **LIKE escapes:** to match a literal `%`, use `LIKE '50\%' ESCAPE '\\'` (or double the escape per dialect).
+- **NULL propagation in CONCAT:** in MySQL, `CONCAT('a', NULL)` returns NULL; in Postgres `||`, same. Use `CONCAT_WS` or wrap each arg in `COALESCE`.
+- **Collation / case:** comparison case sensitivity depends on column collation — never assume.
+
+### CASE Expressions — Plain and Aggregated
+
+`CASE` is the universal conditional. You've seen `SUM(CASE WHEN ...)` for pivoting; the **plain CASE in the SELECT list** is equally common and often forgotten.
+
+```sql
+-- Plain CASE in SELECT — bucket a numeric column into categories
+SELECT order_id,
+       amount,
+       CASE
+         WHEN amount < 50            THEN 'small'
+         WHEN amount < 500           THEN 'medium'
+         WHEN amount < 5000          THEN 'large'
+         ELSE                             'enterprise'
+       END AS size_bucket
+FROM orders;
+
+-- CASE in ORDER BY — custom sort order
+SELECT *
+FROM tickets
+ORDER BY CASE priority
+           WHEN 'critical' THEN 1
+           WHEN 'high'     THEN 2
+           WHEN 'medium'   THEN 3
+           ELSE                 4
+         END;
+
+-- CASE in WHERE — conditional filter
+SELECT *
+FROM orders
+WHERE CASE WHEN region = 'US' THEN amount > 100
+           ELSE                    amount > 50
+      END;
+
+-- Simple CASE syntax (compares one expression to multiple values)
+SELECT CASE status
+         WHEN 'A' THEN 'Active'
+         WHEN 'I' THEN 'Inactive'
+         ELSE          'Unknown'
+       END AS status_label
+FROM users;
+
+-- CASE inside aggregates — the "pivot" pattern
+SELECT user_id,
+       SUM(CASE WHEN status = 'shipped'  THEN 1 ELSE 0 END) AS shipped_count,
+       SUM(CASE WHEN status = 'returned' THEN amount ELSE 0 END) AS returned_revenue
+FROM orders
+GROUP BY user_id;
+
+-- Postgres-only cleaner equivalent using FILTER
+SELECT user_id,
+       COUNT(*) FILTER (WHERE status = 'shipped')  AS shipped_count,
+       SUM(amount) FILTER (WHERE status = 'returned') AS returned_revenue
+FROM orders
+GROUP BY user_id;
+```
+
+**Gotchas:**
+- `CASE` returns NULL if no branch matches and no `ELSE`. Always include `ELSE`.
+- All branches must return a **type-compatible** value — mixing INT and STRING errors out on most engines.
+- Short-circuit evaluation: branches are evaluated in order; the first match wins.
+
+### UNION vs UNION ALL — Quietly Critical
+
+| | Behavior | Cost |
+|---|---|---|
+| `UNION` | Combines results and **dedupes** (implicit DISTINCT + sort) | Expensive — full sort/hash |
+| `UNION ALL` | Combines results, keeps **all** rows including duplicates | Cheap — just concatenation |
+
+```sql
+-- WRONG: silently drops duplicate (user_id, order_date) rows
+SELECT user_id, order_date FROM us_orders
+UNION
+SELECT user_id, order_date FROM eu_orders;
+
+-- RIGHT: keeps every row
+SELECT user_id, order_date FROM us_orders
+UNION ALL
+SELECT user_id, order_date FROM eu_orders;
+```
+
+**Default to `UNION ALL` unless you specifically want dedup.** Three reasons:
+1. **Correctness** — if the same value can legitimately appear in both halves and you want both rows, `UNION` silently drops one.
+2. **Performance** — the dedup is a full sort/hash on the combined result; on large datasets it dominates the cost.
+3. **Clarity** — `UNION ALL` reads as "stack these two results"; `UNION` reads as "stack and dedupe" which is rarely what you want.
+
+**Both halves must have the same number of columns and compatible types**, in the same order. Column names come from the first SELECT.
+
+```sql
+-- Tagging the source — extremely common DE pattern
+SELECT 'US' AS region, user_id, amount FROM us_orders
+UNION ALL
+SELECT 'EU' AS region, user_id, amount FROM eu_orders;
+```
+
+For "rows in A but not in B" use `EXCEPT` (Postgres / MS SQL / Snowflake / Oracle 21+) or `MINUS` (Oracle, MySQL via `LEFT JOIN ... IS NULL`). For "rows in both" use `INTERSECT`. Both dedupe by default; `EXCEPT ALL` / `INTERSECT ALL` preserve multiplicity (Postgres / Spark).
 
 ---
 
@@ -341,11 +572,129 @@ If you can't write each of these in under 5 minutes from a blank screen, drill t
 `QUALIFY` is a quality-of-life killer feature — lets you filter on window functions without a CTE:
 
 ```sql
--- Snowflake/BigQuery/Spark
+-- Snowflake/BigQuery/Spark ONLY — does NOT work on MySQL/MS SQL/Oracle/Postgres
 SELECT *
 FROM orders
 QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY order_date DESC) = 1;
 ```
+
+**⚠️ DO NOT use QUALIFY on most online SQL assessments.** Their engines (MySQL, MS SQL, Oracle, DB2, sometimes Postgres) don't support it. Always default to the portable pattern:
+
+```sql
+-- Portable equivalent — works on every engine
+WITH ranked AS (
+  SELECT *,
+         ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY order_date DESC) AS rn
+  FROM orders
+)
+SELECT * FROM ranked WHERE rn = 1;
+```
+
+A Postgres-only shorthand for "one row per group" is `DISTINCT ON`:
+
+```sql
+-- Postgres only — first row per user_id by date desc
+SELECT DISTINCT ON (user_id) *
+FROM orders
+ORDER BY user_id, order_date DESC;
+```
+
+### NULLS ordering and FILTER (small wins worth knowing)
+
+```sql
+-- NULL placement in ORDER BY — Postgres, Oracle, SQL Server 2022+
+SELECT * FROM users ORDER BY last_login DESC NULLS LAST;
+SELECT * FROM users ORDER BY last_login ASC  NULLS FIRST;
+
+-- MySQL has no NULLS LAST/FIRST — emulate with a boolean sort key
+SELECT * FROM users ORDER BY last_login IS NULL, last_login DESC;
+-- (IS NULL returns 0 for non-NULL, 1 for NULL → non-NULL sorts first)
+
+-- FILTER clause — Postgres / Spark / DuckDB / SQLite 3.30+
+-- Same effect as SUM(CASE WHEN ... THEN x ELSE 0 END) but cleaner:
+SELECT
+  user_id,
+  COUNT(*)       FILTER (WHERE status = 'shipped')  AS shipped_count,
+  SUM(amount)    FILTER (WHERE status = 'returned') AS returned_amount,
+  AVG(rating)    FILTER (WHERE rating IS NOT NULL)  AS avg_rating
+FROM orders
+GROUP BY user_id;
+```
+
+If your target engine doesn't support `FILTER`, fall back to `SUM(CASE WHEN ... THEN x ELSE 0 END)` — universally supported, slightly noisier.
+
+---
+
+## Dialect Reference {#dialect-reference}
+
+Most online assessments pin you to one engine. **Before writing anything, confirm the engine** (the question header tells you), then use this table to translate your mental model:
+
+### Dates and Times
+
+| Need | MySQL | MS SQL Server | Oracle | Postgres / Snowflake / BQ / Spark |
+|---|---|---|---|---|
+| Current timestamp | `NOW()` / `CURRENT_TIMESTAMP` | `GETDATE()` / `SYSDATETIME()` | `SYSDATE` / `CURRENT_TIMESTAMP` | `NOW()` / `CURRENT_TIMESTAMP` |
+| Today's date | `CURDATE()` | `CAST(GETDATE() AS DATE)` | `TRUNC(SYSDATE)` | `CURRENT_DATE` |
+| Year/Month/Day extract | `YEAR(d)` / `MONTH(d)` / `DAY(d)` | Same | `EXTRACT(YEAR FROM d)` | `EXTRACT` or `DATE_PART` |
+| Truncate to month | `DATE_FORMAT(d, '%Y-%m-01')` | `DATEFROMPARTS(YEAR(d), MONTH(d), 1)` | `TRUNC(d, 'MM')` | `DATE_TRUNC('month', d)` |
+| Days between two dates | `DATEDIFF(d2, d1)` (2-arg) | `DATEDIFF(day, d1, d2)` (3-arg) | `d2 - d1` (returns days) | `(d2 - d1)` or `DATE_DIFF(d2, d1, DAY)` |
+| Add 7 days | `DATE_ADD(d, INTERVAL 7 DAY)` | `DATEADD(day, 7, d)` | `d + 7` or `d + INTERVAL '7' DAY` | `d + INTERVAL '7 days'` |
+| Parse string → date | `STR_TO_DATE(s, '%Y-%m-%d')` | `CONVERT(DATE, s, 23)` or `TRY_CAST` | `TO_DATE(s, 'YYYY-MM-DD')` | `TO_DATE(s, 'YYYY-MM-DD')` or `s::date` |
+| Format date → string | `DATE_FORMAT(d, '%Y-%m-%d')` | `FORMAT(d, 'yyyy-MM-dd')` | `TO_CHAR(d, 'YYYY-MM-DD')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
+| Day-of-week (1–7) | `DAYOFWEEK(d)` (Sun=1) | `DATEPART(weekday, d)` | `TO_CHAR(d,'D')` | `EXTRACT(DOW FROM d)` (Sun=0) |
+| Day name | `DAYNAME(d)` | `DATENAME(weekday, d)` | `TO_CHAR(d,'DAY')` | `TO_CHAR(d,'Day')` |
+
+### Strings
+
+| Need | MySQL | MS SQL | Oracle | Postgres |
+|---|---|---|---|---|
+| Concat | `CONCAT(a,b)` (NULLs → NULL) or `CONCAT_WS(sep,...)` | `a + b` or `CONCAT` | `a \|\| b` or `CONCAT(a,b)` (2-arg) | `a \|\| b` or `CONCAT` |
+| Substring | `SUBSTRING(s, start, len)` | `SUBSTRING(s, start, len)` | `SUBSTR(s, start, len)` | `SUBSTRING(s FROM start FOR len)` |
+| Length (chars) | `CHAR_LENGTH(s)` (LENGTH = bytes) | `LEN(s)` | `LENGTH(s)` | `CHAR_LENGTH(s)` or `LENGTH(s)` |
+| Position of substring | `LOCATE(sub, s)` or `INSTR` | `CHARINDEX(sub, s)` | `INSTR(s, sub)` | `POSITION(sub IN s)` or `STRPOS(s, sub)` |
+| Replace | `REPLACE(s, from, to)` | Same | Same | Same |
+| Pad | `LPAD(s, n, c)` / `RPAD` | `RIGHT(REPLICATE('0',n)+s, n)` (no LPAD) | `LPAD(s, n, c)` | `LPAD(s, n, c)` |
+| Split nth token | `SUBSTRING_INDEX(s, delim, n)` | `STRING_SPLIT(s, delim)` (table) | `REGEXP_SUBSTR(s, '[^x]+', 1, n)` | `SPLIT_PART(s, delim, n)` |
+| Regex match | `s REGEXP pat` | `LIKE` only natively; CLR for regex | `REGEXP_LIKE(s, pat)` | `s ~ pat` (case-sens) / `s ~* pat` (case-insens) |
+| Regex replace | `REGEXP_REPLACE(s, pat, repl)` (MySQL 8+) | `STRING_AGG` workarounds | `REGEXP_REPLACE` | `REGEXP_REPLACE(s, pat, repl, 'g')` |
+| Group concat | `GROUP_CONCAT(col SEPARATOR ',')` | `STRING_AGG(col, ',')` (2017+) | `LISTAGG(col, ',') WITHIN GROUP (ORDER BY ...)` | `STRING_AGG(col, ',')` |
+
+### Top-N / Pagination
+
+| Need | MySQL | MS SQL | Oracle | Postgres / Snowflake |
+|---|---|---|---|---|
+| Top N rows | `LIMIT n` | `SELECT TOP n ...` or `OFFSET 0 ROWS FETCH NEXT n ROWS ONLY` | `FETCH FIRST n ROWS ONLY` (12c+) or `WHERE ROWNUM <= n` | `LIMIT n` |
+| Skip & take | `LIMIT offset, n` | `OFFSET k ROWS FETCH NEXT n ROWS ONLY` | `OFFSET k ROWS FETCH NEXT n ROWS ONLY` | `LIMIT n OFFSET k` |
+| Filter on window function | CTE + `WHERE rn = 1` | Same | Same | Same; Snowflake/BQ have `QUALIFY` |
+
+### Numeric / Type Casting
+
+| Need | Portable form |
+|---|---|
+| Promote to decimal | `CAST(x AS DECIMAL(10,4))` |
+| Promote to float | `CAST(x AS FLOAT)` or `x * 1.0` |
+| Truncate to int | `CAST(x AS UNSIGNED)` (MySQL) / `CAST(x AS INT)` (most) / `TRUNC(x)` (Oracle) |
+| Postgres shorthand | `x::numeric` / `x::int` / `x::text` |
+
+### Booleans
+
+- MySQL: no real BOOLEAN — `TRUE`/`FALSE` are aliases for `1`/`0`; column type is `TINYINT(1)`.
+- MS SQL: use `BIT` (0/1); no `TRUE`/`FALSE` keywords in expressions.
+- Oracle: no boolean type; use `CHAR(1) CHECK (c IN ('Y','N'))` or `NUMBER(1)`.
+- Postgres / Snowflake / BigQuery: real `BOOLEAN` type.
+
+When in doubt, return `1`/`0` integers — every engine accepts that.
+
+### The "Before You Hit Run" Checklist
+
+1. **Confirm the engine.** Date/string syntax depends on it.
+2. **Trace integer division.** Every `/` between two integer columns → cast or multiply by 1.0.
+3. **Wrap every denominator in `NULLIF(d, 0)`.**
+4. **`COALESCE` every aggregate that could return NULL** (LEFT JOIN sums, etc.) if the spec says "0 for missing."
+5. **Choose `UNION ALL` unless you specifically want dedup.**
+6. **Round to the spec's decimals — `ROUND(x, 2)` is almost always the rounding the grader expects.**
+7. **`ORDER BY` matches the example output exactly** — sort columns, direction, tiebreaker.
+8. **Hidden tests usually break on:** division-by-zero, NULL handling, ties, empty input, leap years, time-zone edge cases.
 
 ---
 
@@ -365,20 +714,47 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY order_date DESC) = 1;
 
 **"How do you detect gaps and islands (consecutive runs)?"** `ROW_NUMBER() OVER (PARTITION BY user ORDER BY date) - DENSE_RANK() based on date sequence` to assign a group id to consecutive runs, then aggregate.
 
+**"What's `COALESCE` and `NULLIF` good for?"** `COALESCE(a,b,c)` returns the first non-NULL — used to default missing values. `NULLIF(a,b)` returns NULL if `a=b` — most commonly `x / NULLIF(y, 0)` to avoid divide-by-zero (the error becomes a NULL you can then `COALESCE`).
+
+**"Why does my percentage column return 0?"** Integer division. `shipped / total` between two ints rounds to 0 for any ratio < 1. Fix with `100.0 * shipped / NULLIF(total, 0)` or `CAST(shipped AS DECIMAL) / NULLIF(total, 0)`.
+
+**"`UNION` vs `UNION ALL`?"** `UNION` dedupes (full sort/hash, expensive, can silently drop rows you wanted); `UNION ALL` keeps everything (cheap concat). Default to `UNION ALL`.
+
+**"How do you write `LIKE` patterns?"** `%` = any chars (incl. empty), `_` = exactly one char. `LIKE 'foo%'` uses an index; `LIKE '%foo%'` cannot. Use `ILIKE` (Postgres) or `LOWER(col) LIKE LOWER(pat)` for case-insensitive matching.
+
 **Quick trade-off pairs:**
 - Subquery vs JOIN vs EXISTS: usually equivalent plans; write for clarity.
 - CTE vs subquery: CTE for readability; not always faster.
 - `COUNT(*)` vs `COUNT(1)`: identical, no perf difference.
+- `UNION` vs `UNION ALL`: dedupe + sort vs cheap concat; default to ALL.
+- `IFNULL` / `ISNULL` / `NVL` vs `COALESCE`: dialect-specific 2-arg vs portable n-arg. Always prefer COALESCE.
+- `QUALIFY` (Snowflake/BQ/Spark) vs `CTE + WHERE rn = 1`: shorthand vs portable. Default to portable in timed rounds.
 - Indexes (OLTP) vs sort keys / clustering (OLAP): different mental models for different engines.
 
 ---
 
 ## Resources & Links
 
+### Reference docs (bookmark, by dialect)
+- [PostgreSQL docs — Functions and Operators](https://www.postgresql.org/docs/current/functions.html)
+- [MySQL 8 — Functions and Operators](https://dev.mysql.com/doc/refman/8.0/en/functions.html)
+- [MS SQL Server — Functions](https://learn.microsoft.com/en-us/sql/t-sql/functions/functions)
+- [Oracle SQL — Functions](https://docs.oracle.com/en/database/oracle/oracle-database/19/sqlrf/Functions.html)
+- [Snowflake — SQL Function Reference](https://docs.snowflake.com/en/sql-reference-functions)
+- [BigQuery — Function Reference](https://cloud.google.com/bigquery/docs/reference/standard-sql/functions-and-operators)
+
+### Practice
 - [PostgreSQL Window Functions Tutorial](https://www.postgresql.org/docs/current/tutorial-window.html) — clearest explanation
 - [Use The Index, Luke!](https://use-the-index-luke.com/) — index/query plan deep dive
 - [Mode Analytics SQL Tutorial](https://mode.com/sql-tutorial/) — interview-style SQL drills
 - [DataLemur](https://datalemur.com/) — DE-specific SQL practice
 - [StrataScratch](https://www.stratascratch.com/) — real interview SQL questions
+- [SQLZoo](https://sqlzoo.net/) — engine-switchable drills (MySQL, MS SQL, Oracle, Postgres)
+- [LeetCode SQL track](https://leetcode.com/problemset/database/) — timed-assessment-style problems
+
+### Companion files
+- [Pandas Data Manipulation](./16-pandas-data-manipulation.md) — the pandas equivalent for coding-round data wrangling
+- [Data Modeling](./02-data-modeling.md)
+- [Partitioning & Performance](./13-partitioning-performance.md)
 
 *Next: drill the 10 patterns above weekly. Add notes here as you encounter engine-specific quirks.*
