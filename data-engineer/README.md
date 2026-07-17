@@ -50,6 +50,10 @@ Read in this order. Each file follows the Beginner → Intermediate → Advanced
 15. [System Design for DE](./15-system-design-de.md) — interview frameworks + worked examples
 16. [Pandas Data Manipulation](./16-pandas-data-manipulation.md) — DE-flavored pandas + SQL→pandas bridge + pandas↔PySpark
 
+### Certification prep
+
+- [**AWS Certified Data Engineer – Associate (DEA-C01) Study Hub**](./aws/README.md) — 14-day plan, 4 domain files, service quick reference, exam-day strategy, and a resume-worthy capstone project spec (GenAI Support Intelligence Platform on AWS with Bedrock + pgvector + Iceberg).
+
 ---
 
 ## Certifications That Actually Move the Needle
