@@ -144,22 +144,86 @@ Compare: base model → pretrained → SFT'd → DPO'd (if you did it). Chart th
 
 ---
 
-## 6. Compute budget
+## 6. Compute budget — home hardware, $0
 
-Rough targets, assuming Qwen 2.5-Coder 3B + LoRA rank 16:
+Constraints for this project: **strict $0 spend**, split across two machines you already own:
 
-| Phase | Compute needed | Where |
-| --- | --- | --- |
-| Phase 0 | None (inference only) | Your laptop |
-| Phase 1 | CPU-only, minutes | Your laptop |
-| Phase 2 | 10 GPU-min for MFU measurement | Colab free tier |
-| Phase 3 (pretrain 500 M tokens) | ~40–80 H100-hours **or** ~200 A100-hours **or** ~400 RTX 4090-hours (on 24 GB VRAM with QLoRA + gradient checkpointing) | Runpod / Lambda / Vast.ai spot |
-| Phase 5 (SFT) | ~5 H100-hours | same |
-| Phase 6 (DPO) | ~10 H100-hours | same |
-| Phase 7 | 1–2 hours | same |
-| Phase 8, 9 | CPU / laptop | Your laptop |
+- **Primary training rig:** Windows desktop with **NVIDIA RTX 4060 Ti 16 GB** (Ada Lovelace, CUDA 12.7). No session limits, runs for days uninterrupted. This is the training workhorse.
+- **Inference / deployment:** MacBook M2 with 8 GB unified memory. Runs the final quantized model for the CLI demo. No training role.
+- **Free-tier cloud as backup only:** Kaggle T4×2 (30 hrs/week, 12-hr sessions) if the desktop is unavailable or for cross-machine experiments. Not primary path.
 
-At Runpod H100 spot prices (~$1.80/hr in mid-2025), **total cloud spend ≈ $90–$180** for the whole project. Cheaper if you use RTX 4090 spot (~$0.40/hr) and accept ~5× the wall-clock. If you use QLoRA (4-bit base + LoRA on top), the 3 B model even fits on a 12 GB card, which opens up more markets.
+### What fits on the 4060 Ti 16 GB
+
+Ada Lovelace with 4th-gen tensor cores is far more capable than the Kaggle T4s (Turing, no bf16 tensor cores). Real-world throughput on QLoRA / LoRA training with Qwen-class models at seq 2048:
+
+| Setup | VRAM used | Realistic throughput | Notes |
+| --- | --- | --- | --- |
+| Qwen 2.5-Coder **3 B LoRA on bf16 base** (no quantization) | ~11 GB | ~3,500–4,500 tok/sec | **Recommended.** Best quality signal; skips QLoRA's numerical error. |
+| Qwen 2.5-Coder 3 B QLoRA (4-bit base) | ~6 GB | ~4,500–5,500 tok/sec | Faster; slight quality tax; huge headroom for big batches / longer seqs. |
+| Qwen 2.5-Coder **7 B QLoRA** | ~10 GB | ~2,000–3,000 tok/sec | Stretch: bigger, more capable base. ~2× wall-clock vs. 3 B. |
+| DeepSeek-Coder-V2-Lite 16 B MoE QLoRA (2.4 B active) | ~14 GB | ~1,500–2,500 tok/sec | Tight fit but SOTA small coder. Save for post-3B experiments. |
+| Qwen 2.5-Coder 3 B full bf16 (no LoRA, full fine-tune) | ~14 GB | Doesn't fit optimizer state | Not practical on 16 GB. |
+
+**Recommended primary configuration:** Qwen 2.5-Coder 3 B + **LoRA (rank 16, no QLoRA) on bf16 base**, seq 2048, per-step batch 4, gradient accumulation ×16 for effective batch 64, `paged_adamw_8bit` optimizer (cuts optimizer state ~4× vs. fp32 Adam).
+
+Why skip QLoRA when you have the memory: 4-bit NF4 quantization of the base weights *does* introduce small numerical error that shows up in downstream quality. Real research groups use QLoRA when they have to, not by preference. You have the VRAM — use it.
+
+### Wall-clock plan by phase
+
+Assumes ~4,000 tok/sec on the 4060 Ti for the recommended 3 B LoRA-bf16 setup.
+
+| Phase | GPU time | Where | Wall-clock |
+| --- | --- | --- | --- |
+| Phase 0 | 0 | M2 laptop | An evening |
+| Phase 1 (tokenizer study) | 0 (CPU) | Either machine | An evening |
+| Phase 2 (napkin math + MFU measurement) | ~15 min | 4060 Ti | An evening |
+| **Phase 3 (500 M-token pretrain)** | **~35 hrs** | **4060 Ti** | **~1.5 days uninterrupted** |
+| Phase 4 (SFT data curation) | 0 (CPU + API calls) | M2 laptop | 2 evenings |
+| Phase 5 (SFT, 15 K examples × 3 epochs) | ~3 hrs | 4060 Ti | Half an evening |
+| Phase 6 (DPO, optional) | ~5 hrs | 4060 Ti | An evening |
+| Phase 7 (eval) | ~2 hrs | 4060 Ti | An evening |
+| Phase 8 (quantize to GGUF) | 0 (CPU) | M2 laptop | An evening |
+| Phase 9 (CLI + optional VS Code) | 0 | M2 laptop | Weekend |
+
+**Total spend: $0** (electricity ~$3–5 for the pretrain run at 165 W × 35 hrs × ~$0.15/kWh). **Total wall-clock: ~2 focused weekends** of active work plus ~2 days of unattended training.
+
+### Environment setup — WSL2 + CUDA is the play
+
+Windows native PyTorch works but the QLoRA / accelerated-training stack (`bitsandbytes`, `unsloth`, `flash-attention`, `xformers`) is Linux-first. Save yourself two weeks of "why does this wheel not exist for win_amd64" and use **WSL2 Ubuntu with GPU passthrough**:
+
+1. Enable WSL2 on Windows 11 (already have if you're running Docker Desktop, which the `nvidia-smi` output shows).
+2. Install Ubuntu 22.04 from the Microsoft Store.
+3. Verify GPU passthrough: `nvidia-smi` inside WSL2 should show your 4060 Ti.
+4. Install CUDA toolkit inside WSL2 (matching driver's 12.7).
+5. `pip install torch --index-url https://download.pytorch.org/whl/cu124` (cu124 works with driver 12.7).
+6. `pip install transformers peft trl bitsandbytes accelerate datasets wandb`.
+7. Optional but excellent: `pip install unsloth` — the `unsloth` library is a highly optimized LoRA training stack that gets 2× throughput vs. vanilla HuggingFace + PEFT on Ampere/Ada GPUs. Big win for your wall-clock.
+
+Once WSL2 is set up, ergonomics are identical to any Linux ML box. Your Windows filesystem is mounted at `/mnt/c/…`, which is convenient for cross-editing.
+
+### Stretch experiment: Qwen 2.5-Coder 7 B QLoRA
+
+After the 3 B run finishes, you have ~2 days of budget for a follow-up experiment. Running the same 500 M-token pretrain on the **7 B QLoRA** setup takes ~3 days and produces a meaningfully more capable model. Two-model portfolio ("here's my 3 B primary and my 7 B stretch, with ablation numbers between them") is a strong interview signal — it shows you can plan compute *and* execute on a research question.
+
+### Operational notes for multi-day training
+
+- **Checkpoint every 1,000 steps** into a local directory. Not because of session kills (there aren't any), but for crash recovery (WSL2 occasionally hiccups, Windows updates auto-reboot if you haven't disabled it).
+- **Disable Windows Update auto-reboot** for the duration. Settings → Windows Update → Advanced options → Active hours → set to 24 hrs, or just pause updates for a week.
+- **Thermal check.** 165 W sustained will heat your case. Monitor with `nvidia-smi -l 5` in a separate WSL2 terminal. If temps exceed 83°C, throttling kicks in and you silently lose 15–30% throughput. Fixes: undervolting (via MSI Afterburner on Windows), improving case airflow, or capping power limit slightly (`sudo nvidia-smi -pl 140`).
+- **Log to Weights & Biases** for training curves accessible from any device — you can spot-check progress from the M2 while the desktop grinds.
+- **Second monitor / display** on the 4060 Ti: don't. If it's driving your active display, some VRAM is stolen and Windows compositor can interrupt training. Ideally the 4060 Ti runs headless while an integrated GPU or second card drives the display. If that's not an option, at least close Chrome, Slack, Docker Desktop, and Edge WebView2 during training — your `nvidia-smi` snapshot showed ~20 processes touching the GPU (Slack, Chrome, Edge, Docker) that will silently steal cycles.
+
+### Local M2 8 GB inference
+
+M2 is inference-only. 3 GB baseline for macOS + apps → ~4–5 GB usable.
+
+- **Qwen 2.5-Coder 3B at Q4_K_M** (~2 GB weights): ~15–20 tok/sec via `llama.cpp` with Metal. Fits with ~2 GB memory margin. Primary demo target.
+- **Qwen 2.5-Coder 1.5B at Q4** (~1 GB weights): ~40 tok/sec. Fallback / faster-response option — trained via the same recipe, half the compute, so a natural companion artifact.
+- **Ollama** is the simplest runtime for demos. `llama.cpp` directly gives you more control for the Phase 9 CLI.
+
+### Candid caveat on 500 M tokens
+
+500 M tokens of continual pretraining on a 3 B model with LoRA rank 16 typically saturates around 100–200 M tokens — marginal quality gain from 200 M → 500 M is small. You've chosen to keep the full 500 M, which is fine for the "see the loss curve fully flatten" learning experience. If mid-run you find yourself impatient, dropping to 200 M costs ~14 hours instead of ~35.
 
 ---
 
@@ -229,12 +293,13 @@ Phases 4 (data curation), 6 (DPO), and 9 (CLI/VS Code) are optional polish. Skip
 
 Portfolio README bullet points, when you're finished:
 
-- Built LabMate, a 3 B open-weight coding assistant continually pretrained on 500 M tokens of scientific-Python and SFT-tuned on 12 K instruction-response pairs, running locally at 25 tok/sec on Apple M-series via `llama.cpp`.
+- Built LabMate, a 3 B open-weight coding assistant continually pretrained on 500 M tokens of scientific-Python and SFT-tuned on 12 K instruction-response pairs, running locally at ~18 tok/sec on an 8 GB Apple M2 via `llama.cpp` with 4-bit quantization.
 - Pass@1 on HumanEval: base 41% → LabMate 44%. Pass@1 on a custom 30-task bio-Python benchmark: base 27% → LabMate 62%. Bits-per-byte on held-out corpus: 1.83 → 1.61.
-- Full training took 47 GPU-hours across one H100 at 51% MFU, total cost $87.
+- Training done on a single RTX 4060 Ti 16 GB at home using `unsloth` + LoRA on bf16, ~35 GPU-hours for the pretrain phase at ~48% MFU, total spend $0 (electricity ~$4).
+- Optional: stretch-experiment ablation showing 3 B LoRA-bf16 vs. 7 B QLoRA on the same 500 M-token corpus.
 - Everything reproducible from a single `Makefile`. Weights + eval on Hugging Face; code on GitHub.
 
-That's a paragraph you can put on a resume line and defend in an hour of technical questions. That's the goal.
+That's a paragraph you can put on a resume line and defend in an hour of technical questions. **The "single 4060 Ti, $0 spend" bullet is a *stronger* interview signal than "$180 on H100s" — it demonstrates constraint-driven engineering with hardware most companies actually have, which is what every real-world job actually looks like.**
 
 ---
 
