@@ -32,7 +32,7 @@ Focus your time proportionally. Domain 1 alone is a third of the exam.
 Supplements:
 - [05-service-quick-reference.md](./05-service-quick-reference.md) — one-page cheat over every in-scope service.
 - [06-exam-day-strategy.md](./06-exam-day-strategy.md) — how to read AWS multi-answer questions + trap phrasings.
-- [07-project-genai-support-intelligence.md](./07-project-genai-support-intelligence.md) — the capstone project spec (resume-worthy).
+- [07-project-llm-intelligence-platform.md](./07-project-llm-intelligence-platform.md) — the capstone project spec (LLM Intelligence Platform — high-signal-only aggregation from arXiv + vendor docs + practitioner discourse).
 
 Cross-references to conceptual coverage already in the repo:
 - [ETL vs ELT](../04-etl-vs-elt.md) — idempotency, backfills, DLQs.
@@ -127,16 +127,18 @@ Assumes 2–3 focused hours/day. Weekend days can absorb a bit more.
 
 Full spec in [07-project-genai-support-intelligence.md](./07-project-genai-support-intelligence.md).
 
-**One-sentence pitch:** a serverless GenAI-powered data platform on AWS that ingests customer support tickets from batch + streaming sources, enriches them with Bedrock LLMs (classification, summarization, embeddings), lands them in a governed Iceberg lakehouse, exposes semantic search via Aurora pgvector, and serves analytics in QuickSight — all deployed via CDK with Lake Formation governance and Macie-driven PII protection.
+**One-sentence pitch:** a serverless GenAI data platform on AWS that ingests **only high-signal LLM content** — arXiv papers, official docs from Anthropic / OpenAI / Google / Meta / Mistral, HuggingFace model cards, curated practitioner discourse — filters out AI-slop with a Bedrock quality classifier, extracts model comparisons + best practices, and serves semantic search across the actually-useful state of LLM knowledge.
 
 **Why this project:**
-- Hits **all four exam domains** (proves you understood the exam scope).
-- Incorporates **LLMs** (the 2026 hiring differentiator — matches new Skills 1.2.10, 2.1.8, 2.4.6).
-- Uses **~15 in-scope services** (S3, Kinesis, DMS, Glue, Lambda, Step Functions, EventBridge, Iceberg, Aurora, Redshift, Athena, QuickSight, IAM, KMS, Lake Formation, Macie, Bedrock, CloudWatch, CDK).
-- **Serverless-first** — runs on ~$50/month with the free tier, so cost isn't a blocker.
-- **Portfolio-friendly** — the GitHub README + architecture diagram + demo video are the artifacts recruiters see.
+- **Real problem, no good solution today** — signal-to-noise in LLM discourse is broken; anyone building on LLMs wastes hours filtering it. The signal-tier design solves that.
+- **Meta angle** — LLMs enriching data *about* LLMs. Recruiters at LLM builders (Anthropic, OpenAI, DeepMind, Mistral, Cohere, HuggingFace) recognize this shape as internal-tooling they already build.
+- Hits **all four exam domains** with real depth (proves you understood exam scope, not just recognition).
+- Uses **~20 in-scope services** (S3, Kinesis, DMS, Glue, Lambda, Step Functions, EventBridge, Iceberg, RDS pgvector, Redshift Serverless, Athena, IAM, KMS, Lake Formation, Macie, Bedrock, CloudWatch, CDK, etc.).
+- **Cost-capped hard** — $30 total build spend, $5/mo idle, $8 any 24-hour period. Enforced via Budget alarm.
+- **Interview-defensible by design** — every service choice in the spec has a rationale + rejected alternatives.
+- **Parallel with study** — each weekend implements the domain you just studied.
 
-**Timeline post-exam:** 3–4 weekends of focused work. Full breakdown in the project file.
+**Timeline:** 4 weekends alongside your 14-day study plan. Full breakdown, per-source ingestion patterns, interview drills at end of each weekend, and design-decision defenses in the project file.
 
 ---
 
